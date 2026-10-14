@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printable Xerox Document & Signature Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts for Document & Signature options -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Caveat:wght@600;700&family=Noto+Sans+Devanagari:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* A4 Paper Preview Styling */
+        .a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            height: 297mm;
+            background: #ffffff;
+            color: #000000;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+        }
+
+        /* Subtle paper grain overlay for screen preview */
+        .xerox-container {
+            position: relative;
+            display: inline-block;
+            user-select: none;
+        }
+
+        /* Interactive draggable signature box on preview */
+        .signature-draggable {
+            cursor: grab;
+            border: 1px dashed transparent;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .signature-draggable:hover,
+        .signature-draggable.active-drag {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.04);
+        }
+        .signature-draggable:active {
+            cursor: grabbing;
+        }
+
+        /* Range Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: #334155;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            border: 2px solid #0f172a;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+
+        /* Strict Print Styles */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0mm;
+            }
+            html, body {
+                width: 210mm;
+                height: 297mm;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-wrapper {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                display: block !important;
+                overflow: visible !important;
+            }
+            .a4-sheet {
+                width: 210mm !important;
+                height: 297mm !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                transform: none !important;
+                border: none !important;
+            }
+            .signature-draggable {
+                border: none !important;
+                background: transparent !important;
+            }
+            .ruler-guide {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Action Bar (Hidden when printing) -->
+    <header class="no-print bg-slate-900/95 border-b border-slate-800 sticky top-0 z-40 px-4 py-3 backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                    <i class="fa-solid fa-print text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                        Printable Xerox & Signature Studio
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">A4 Ready</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Photocopy filter with self-attestation signature directly below</p>
+                </div>
+            </div>
+
+            <!-- Primary Actions -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Upload Custom Image Button -->
+                <label class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition">
+                    <i class="fa-solid fa-upload text-sky-400"></i>
+                    <span>Upload / Replace ID Image</span>
+                    <input type="file" id="docUploadInput" accept="image/*" class="hidden">
+                </label>
+
+                <!-- Download High-Res Printable A4 Image -->
+                <button id="downloadSheetBtn" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition">
+                    <i class="fa-solid fa-file-arrow-down text-emerald-400"></i>
+                    <span>Download A4 Image</span>
+                </button>
+
+                <!-- Print Button -->
+                <button id="printDocBtn" class="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs sm:text-sm shadow-lg shadow-sky-500/25 transition">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Print Document (A4)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row gap-6 p-4 sm:p-6">
+
+        <!-- Left Sidebar Controls (Hidden when printing) -->
+        <aside class="no-print w-full lg:w-[420px] shrink-0 flex flex-col gap-4">
+
+            <!-- Tip Banner for Uploading Exact Image -->
+            <div id="dropZoneBanner" class="rounded-xl bg-slate-800/90 border-2 border-dashed border-sky-500/40 hover:border-sky-400 p-3.5 transition cursor-pointer">
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-sky-500/15 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-sky-300">Document Image Source</h2>
+                            <span id="sourceBadge" class="text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">Pre-loaded PAN Replica</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                            Drop your original image file here, click to browse, or press <kbd class="px-1.5 py-0.5 bg-slate-900 rounded border border-slate-700 text-[11px]">Ctrl+V</kbd> to apply the Xerox effect to your exact file.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Tabs -->
+            <div class="grid grid-cols-3 gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800">
+                <button data-tab="tab-xerox" class="tab-btn active-tab py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 text-sky-400 shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-sliders"></i> Xerox Filter
+                </button>
+                <button data-tab="tab-signature" class="tab-btn py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-signature"></i> Signature
+                </button>
+                <button data-tab="tab-layout" class="tab-btn py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-ruler-combined"></i> Page Size
+                </button>
+            </div>
+
+            <!-- TAB 1: XEROX FILTER CONTROLS -->
+            <section id="tab-xerox" class="tab-panel bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">Photocopy / Xerox Effect</h3>
+                        <p class="text-xs text-slate-400">Simulates a real B&W laser photocopy machine</p>
+                    </div>
+                    <button id="resetXeroxBtn" class="text-xs text-sky-400 hover:text-sky-300 font-medium">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+                    </button>
+                </div>
+
+                <!-- Quick Xerox Presets -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-2">Photocopy Style Preset</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button data-preset="classic" class="xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300 text-left flex items-center justify-between">
+                            <span>Laser Xerox (Standard)</span>
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </button>
+                        <button data-preset="crisp" class="xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-left flex items-center justify-between">
+                            <span>High-Contrast B&W</span>
+                        </button>
+                        <button data-preset="soft" class="xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-left flex items-center justify-between">
+                            <span>Soft Grayscale Copy</span>
+                        </button>
+                        <button data-preset="dark" class="xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-left flex items-center justify-between">
+                            <span>Dark Heavy Toner</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sliders -->
+                <div class="space-y-3.5 pt-1">
+                    <!-- Cyan/Blue Background Whitening -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Card Background Whitening (Cyan Filter)</span>
+                            <span id="val-whitening" class="text-sky-400 font-mono">78%</span>
+                        </div>
+                        <input id="slider-whitening" type="range" min="0" max="100" value="78" class="w-full">
+                        <p class="text-[11px] text-slate-500 mt-0.5">Turns light-blue card backgrounds clean white while keeping dark text sharp</p>
+                    </div>
+
+                    <!-- Contrast -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Toner Contrast</span>
+                            <span id="val-contrast" class="text-sky-400 font-mono">165%</span>
+                        </div>
+                        <input id="slider-contrast" type="range" min="80" max="280" value="165" class="w-full">
+                    </div>
+
+                    <!-- Brightness -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Exposure / Brightness</span>
+                            <span id="val-brightness" class="text-sky-400 font-mono">112%</span>
+                        </div>
+                        <input id="slider-brightness" type="range" min="70" max="160" value="112" class="w-full">
+                    </div>
+
+                    <!-- Grayscale -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Black & White (Grayscale)</span>
+                            <span id="val-grayscale" class="text-sky-400 font-mono">100%</span>
+                        </div>
+                        <input id="slider-grayscale" type="range" min="0" max="100" value="100" class="w-full">
+                    </div>
+
+                    <!-- Photocopy Grain / Toner Texture -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Laser Toner Grain</span>
+                            <span id="val-grain" class="text-sky-400 font-mono">18%</span>
+                        </div>
+                        <input id="slider-grain" type="range" min="0" max="60" value="18" class="w-full">
+                    </div>
+
+                    <!-- Trim Dark Screenshot Borders -->
+                    <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-medium text-slate-200 block">Auto-Trim Dark Outer Edges</span>
+                            <span class="text-[11px] text-slate-400">Removes black screenshot borders around the card</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-trim" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Subtle Xerox Card Border -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-medium text-slate-200 block">Photocopy Edge Shadow / Outline</span>
+                            <span class="text-[11px] text-slate-400">Adds realistic card edge outline on paper</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-card-border" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SIGNATURE CONTROLS (Below Xerox Image) -->
+            <section id="tab-signature" class="tab-panel hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">Signature Below Document</h3>
+                        <p class="text-xs text-slate-400">Draw, upload, or customize the signature underneath</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-show-sig" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <!-- Mode Selector: Draw vs Upload -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button id="sigModeDrawBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-800 text-sky-400 transition">
+                        <i class="fa-solid fa-pen-nib mr-1"></i> Draw Signature
+                    </button>
+                    <button id="sigModeUploadBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-image mr-1"></i> Upload Signature
+                    </button>
+                </div>
+
+                <!-- Draw Signature Subpanel -->
+                <div id="sigDrawPanel" class="flex flex-col gap-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-300 font-medium">Sign Inside Pad Below:</span>
+                        <div class="flex items-center gap-2">
+                            <button id="restoreDefaultSigBtn" class="text-xs text-slate-400 hover:text-sky-400 transition" title="Restore card signature">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Card Sig
+                            </button>
+                            <button id="clearSigPadBtn" class="text-xs text-rose-400 hover:text-rose-300 font-medium">
+                                <i class="fa-solid fa-eraser mr-1"></i>Clear Pad
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Signature Pad Canvas -->
+                    <div class="bg-white rounded-xl p-1 border-2 border-slate-700 relative overflow-hidden">
+                        <canvas id="sigPadCanvas" width="360" height="120" class="w-full h-[115px] cursor-crosshair touch-none"></canvas>
+                        <div class="pointer-events-none absolute bottom-2 left-3 right-3 border-b border-dashed border-slate-300 text-[10px] text-slate-400 flex justify-between">
+                            <span>Sign above line</span>
+                            <span>Smooth Ink Pad</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Signature Subpanel -->
+                <div id="sigUploadPanel" class="hidden flex-col gap-3">
+                    <label class="cursor-pointer flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-700 hover:border-sky-400 rounded-xl bg-slate-950/60 transition text-center">
+                        <i class="fa-solid fa-file-signature text-2xl text-sky-400 mb-1.5"></i>
+                        <span class="text-xs font-medium text-slate-200">Click to upload signature image</span>
+                        <span class="text-[11px] text-slate-400 mt-0.5">White paper background is automatically removed!</span>
+                        <input type="file" id="sigUploadInput" accept="image/*" class="hidden">
+                    </label>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300">Background Removal Threshold</span>
+                            <span id="val-sig-thresh" class="text-sky-400 font-mono">210</span>
+                        </div>
+                        <input id="slider-sig-thresh" type="range" min="120" max="250" value="210" class="w-full">
+                    </div>
+                </div>
+
+                <!-- Ink Color & Pen Thickness -->
+                <div class="grid grid-cols-2 gap-3 pt-1 border-t border-slate-800">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Signature Ink Color</label>
+                        <div class="flex items-center gap-2">
+                            <button data-ink="#0f296b" class="ink-color-btn w-7 h-7 rounded-full bg-[#0f296b] ring-2 ring-offset-2 ring-offset-slate-900 ring-sky-400" title="Ballpoint Blue Ink"></button>
+                            <button data-ink="#1a1a1a" class="ink-color-btn w-7 h-7 rounded-full bg-[#1a1a1a] border border-slate-600" title="Black Ink"></button>
+                            <button data-ink="#1d4ed8" class="ink-color-btn w-7 h-7 rounded-full bg-[#1d4ed8]" title="Royal Blue Ink"></button>
+                            <button data-ink="#333333" class="ink-color-btn w-7 h-7 rounded-full bg-[#333333]" title="Xerox Toner Charcoal"></button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5">
+                            <span class="text-slate-300 font-medium">Pen Thickness</span>
+                            <span id="val-pen-width" class="text-sky-400 font-mono">2.6px</span>
+                        </div>
+                        <input id="slider-pen-width" type="range" min="1.2" max="5" step="0.2" value="2.6" class="w-full">
+                    </div>
+                </div>
+
+                <!-- Self-Attestation Text & Date Options -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Attestation Header</label>
+                            <select id="select-attest-header" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                                <option value="">None (Signature Only)</option>
+                                <option value="Self Attested">Self Attested</option>
+                                <option value="SELF ATTESTED">SELF ATTESTED (Caps)</option>
+                                <option value="True Copy">True Copy</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Caption Below Sig</label>
+                            <select id="select-sig-caption" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                                <option value="">None</option>
+                                <option value="Signature" selected>Signature</option>
+                                <option value="Applicant Signature">Applicant Signature</option>
+                                <option value="(M. V. Narsimharao)">(M. V. Narsimharao)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Optional Date Checkbox -->
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="toggle-sig-date" class="rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0">
+                            <span>Include Date below signature</span>
+                        </label>
+                        <input type="text" id="input-sig-date" value="15/10/2026" class="w-28 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-right text-slate-200 font-mono">
+                    </div>
+
+                    <!-- Signature Size & Position Sliders -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Signature Size</span>
+                            <span id="val-sig-scale" class="text-sky-400 font-mono">100%</span>
+                        </div>
+                        <input id="slider-sig-scale" type="range" min="50" max="160" value="100" class="w-full">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">Gap Below Xerox Image</span>
+                            <span id="val-sig-gap" class="text-sky-400 font-mono">14 px</span>
+                        </div>
+                        <input id="slider-sig-gap" type="range" min="-25" max="80" value="14" class="w-full">
+                        <p class="text-[11px] text-slate-500 mt-0.5">Tip: You can also drag the signature directly on the A4 preview</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: PAGE LAYOUT & SIZING -->
+            <section id="tab-layout" class="tab-panel hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+                <div class="border-b border-slate-800 pb-3">
+                    <h3 class="text-sm font-semibold text-white">A4 Document Size & Position</h3>
+                    <p class="text-xs text-slate-400">Adjust physical print dimensions on the A4 sheet</p>
+                </div>
+
+                <!-- Standard Print Size Presets -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-2">Xerox Print Size Preset</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button data-size="8.6" class="size-preset-btn px-2.5 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-center">
+                            1:1 ID Size<br><span class="text-[10px] text-slate-400">8.6 cm</span>
+                        </button>
+                        <button data-size="11.2" class="size-preset-btn px-2.5 py-2 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300 text-center">
+                            Standard KYC<br><span class="text-[10px] text-sky-300/80">11.2 cm</span>
+                        </button>
+                        <button data-size="14.0" class="size-preset-btn px-2.5 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-center">
+                            Large Copy<br><span class="text-[10px] text-slate-400">14.0 cm</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Width Slider (in cm) -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-300 font-medium">Printed Xerox Width (cm)</span>
+                        <span id="val-doc-width" class="text-sky-400 font-mono">11.2 cm</span>
+                    </div>
+                    <input id="slider-doc-width" type="range" min="7.0" max="18.0" step="0.2" value="11.2" class="w-full">
+                </div>
+
+                <!-- Top Margin on A4 Page -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-300 font-medium">Top Margin on A4 Page</span>
+                        <span id="val-top-margin" class="text-sky-400 font-mono">3.2 cm</span>
+                    </div>
+                    <input id="slider-top-margin" type="range" min="1.0" max="12.0" step="0.2" value="3.2" class="w-full">
+                </div>
+
+                <!-- Horizontal Alignment -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-2">Horizontal Alignment on Paper</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button data-align="flex-start" class="align-btn px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300">
+                            <i class="fa-solid fa-align-left mr-1"></i> Left
+                        </button>
+                        <button data-align="center" class="align-btn px-3 py-1.5 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300">
+                            <i class="fa-solid fa-align-center mr-1"></i> Center
+                        </button>
+                        <button data-align="flex-end" class="align-btn px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300">
+                            <i class="fa-solid fa-align-right mr-1"></i> Right
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rotation -->
+                <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <span class="text-xs font-medium text-slate-300">Rotate Document Image</span>
+                    <button id="rotateDocBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-medium">
+                        <i class="fa-solid fa-rotate-right mr-1 text-sky-400"></i> Rotate 90°
+                    </button>
+                </div>
+            </section>
+
+            <!-- Quick Print Checklist Card -->
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 text-xs text-slate-400 space-y-1.5">
+                <div class="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Ready-to-Print Guarantee
+                </div>
+                <p>When you click <strong>Print Document</strong>, all dark toolbars and borders automatically vanish—printing only the clean white A4 sheet with your Xeroxed ID and signature underneath.</p>
+            </div>
+        </aside>
+
+        <!-- Right Section: Live A4 Printable Preview -->
+        <section class="print-wrapper flex-1 flex flex-col items-center justify-start overflow-x-auto">
+            <!-- Preview Toolbar (Hidden when printing) -->
+            <div class="no-print w-full max-w-[210mm] flex items-center justify-between mb-3 px-1 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Live A4 Print Preview (210mm × 297mm)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>Zoom:</span>
+                    <button id="zoomOutBtn" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center">-</button>
+                    <span id="zoomLevelText" class="font-mono text-slate-300 w-11 text-center">100%</span>
+                    <button id="zoomInBtn" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center">+</button>
+                </div>
+            </div>
+
+            <!-- THE ACTUAL A4 PRINTABLE SHEET -->
+            <div id="a4Sheet" class="a4-sheet flex flex-col items-center" style="padding: 3.2cm 1.8cm 1.8cm 1.8cm;">
+
+                <!-- Top Ruler Hint (Screen Only) -->
+                <div class="ruler-guide no-print absolute top-2 left-4 right-4 flex justify-between text-[10px] text-slate-400 font-mono pointer-events-none select-none border-b border-dashed border-slate-200 pb-1">
+                    <span>A4 PORTRAIT PAPER (210mm × 297mm)</span>
+                    <span>PRINT AREA</span>
+                </div>
+
+                <!-- Document + Signature Column Wrapper -->
+                <div id="documentColumn" class="flex flex-col items-center relative">
+
+                    <!-- 1. XEROXED DOCUMENT IMAGE CONTAINER -->
+                    <div id="xeroxWrapper" class="xerox-container transition-all" style="width: 11.2cm;">
+                        <canvas id="xeroxOutputCanvas" class="w-full h-auto block"></canvas>
+                    </div>
+
+                    <!-- 2. SIGNATURE BLOCK DIRECTLY BELOW XEROX IMAGE -->
+                    <div id="signatureBlock" class="signature-draggable flex flex-col items-center px-4 py-1.5 rounded select-none relative" style="margin-top: 14px; transform: scale(1);">
+                        <!-- Drag Hint Badge (Screen only on hover) -->
+                        <div class="no-print opacity-0 hover:opacity-100 transition-opacity absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded shadow pointer-events-none">
+                            Drag to reposition signature
+                        </div>
+
+                        <!-- Optional Self Attested Header -->
+                        <div id="previewAttestHeader" class="text-xs font-semibold tracking-wide text-slate-900 mb-0.5 hidden" style="font-family: 'Inter', sans-serif;">
+                            Self Attested
+                        </div>
+
+                        <!-- Rendered Signature Canvas on the A4 sheet -->
+                        <canvas id="previewSigCanvas" width="320" height="100" class="h-[58px] w-auto block pointer-events-none"></canvas>
+
+                        <!-- Optional Caption & Date Underneath -->
+                        <div class="flex flex-col items-center -mt-1">
+                            <span id="previewSigCaption" class="text-[11px] font-medium text-slate-800 tracking-wide">Signature</span>
+                            <span id="previewSigDate" class="text-[10px] font-mono text-slate-700 hidden">Date: 15/10/2026</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notification (replaces alert) -->
+    <div id="toastMsg" class="no-print fixed bottom-5 right-5 z-50 translate-y-12 opacity-0 pointer-events-none transition-all duration-300 bg-slate-900 border border-sky-500/40 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
+        <i class="fa-solid fa-circle-info text-sky-400"></i>
+        <span id="toastText">Notification</span>
+    </div>
+
+    <script>
+        /********************************************************************
+         * APPLICATION STATE & CONFIGURATION
+         ********************************************************************/
+        const state = {
+            // Xerox Filter Parameters
+            whitening: 78,
+            contrast: 165,
+            brightness: 112,
+            grayscale: 100,
+            grain: 18,
+            trimDarkEdges: true,
+            showCardBorder: true,
+            rotation: 0, // 0, 90, 180, 270
+
+            // Page Layout Parameters
+            docWidthCm: 11.2,
+            topMarginCm: 3.2,
+            horizontalAlign: 'center',
+            previewZoom: 1,
+
+            // Signature Parameters
+            showSignature: true,
+            sigMode: 'draw', // 'draw' or 'upload'
+            inkColor: '#0f296b',
+            penWidth: 2.6,
+            sigThreshold: 210,
+            attestHeader: '',
+            sigCaption: 'Signature',
+            showDate: false,
+            sigDateText: '15/10/2026',
+            sigScale: 100,
+            sigGapPx: 14,
+            sigOffsetX: 0
+        };
+
+        // Offscreen Source Canvas for the ID Card Image
+        const sourceDocCanvas = document.createElement('canvas');
+        const sourceDocCtx = sourceDocCanvas.getContext('2d');
+
+        // Uploaded raw Image object (if user uploads/pastes their own file)
+        let uploadedDocImage = null;
+        let uploadedSigImage = null;
+
+        // DOM Elements
+        const xeroxOutputCanvas = document.getElementById('xeroxOutputCanvas');
+        const xeroxCtx = xeroxOutputCanvas.getContext('2d');
+        const sigPadCanvas = document.getElementById('sigPadCanvas');
+        const sigPadCtx = sigPadCanvas.getContext('2d');
+        const previewSigCanvas = document.getElementById('previewSigCanvas');
+        const previewSigCtx = previewSigCanvas.getContext('2d');
+
+        // Store drawn signature strokes so changing ink color or thickness updates live
+        let sigStrokes = [];
+        let currentStroke = null;
+        let isDrawingSig = false;
+
+        /********************************************************************
+         * 1. GENERATE HIGH-PRECISION REPLICA OF THE GIVEN PAN CARD BY DEFAULT
+         *    (And allow instant replacement via file upload / drag-drop / paste)
+         ********************************************************************/
+        function renderDefaultPanCardReplica() {
+            const w = 1040;
+            const h = 668;
+            sourceDocCanvas.width = w;
+            sourceDocCanvas.height = h;
+            const ctx = sourceDocCtx;
+
+            // Black outer screenshot border (to mirror the user's screenshot)
+            ctx.fillStyle = '#070709';
+            ctx.fillRect(0, 0, w, h);
+
+            // Inner Card Area
+            const cx = 24, cy = 18, cw = w - 48, ch = h - 36;
+
+            // Soft cyan/blue gradient card background (authentic old-style PAN pattern)
+            const bgGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy + ch);
+            bgGrad.addColorStop(0, '#f4fdff');
+            bgGrad.addColorStop(0.28, '#bceeff');
+            bgGrad.addColorStop(0.62, '#c8f2ff');
+            bgGrad.addColorStop(1, '#aceaff');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(cx, cy, cw, ch);
+
+            // Subtle mottled security background clouds
+            ctx.save();
+            for (let i = 0; i < 45; i++) {
+                const rx = cx + (Math.sin(i * 7.3) * 0.5 + 0.5) * cw;
+                const ry = cy + (Math.cos(i * 4.1) * 0.5 + 0.5) * ch;
+                const rad = 50 + (i % 5) * 28;
+                const cloud = ctx.createRadialGradient(rx, ry, 5, rx, ry, rad);
+                cloud.addColorStop(0, 'rgba(255, 255, 255, 0.42)');
+                cloud.addColorStop(1, 'rgba(130, 212, 245, 0)');
+                ctx.fillStyle = cloud;
+                ctx.beginPath();
+                ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Header Text - Left: आयकर विभाग / INCOME TAX DEPARTMENT
+            ctx.fillStyle = '#2560a8';
+            ctx.font = '700 41px "Noto Sans Devanagari", sans-serif';
+            ctx.fillText('आयकर विभाग', cx + 34, cy + 72);
+
+            ctx.font = '700 35px "Times New Roman", serif';
+            ctx.save();
+            ctx.scale(0.84, 1);
+            ctx.fillText('INCOME TAX DEPARTMENT', (cx + 28) / 0.84, cy + 132);
+            ctx.restore();
+
+            // Header Text - Right: भारत सरकार / GOVT. OF INDIA
+            ctx.font = '700 41px "Noto Sans Devanagari", sans-serif';
+            ctx.fillText('भारत  सरकार', cx + 622, cy + 70);
+
+            ctx.font = '700 36px "Times New Roman", serif';
+            ctx.save();
+            ctx.scale(0.92, 1);
+            ctx.fillText('GOVT. OF INDIA', (cx + 625) / 0.92, cy + 130);
+            ctx.restore();
+
+            // Center National Emblem of India Silhouette
+            drawEmblemSilhouette(ctx, cx + 506, cy + 36, 68, 108);
+
+            // Left Card Details (Name, Father's Name, DOB, PAN)
+            ctx.fillStyle = '#0d408c';
+            ctx.font = '700 28px Arial, sans-serif';
+            ctx.fillText('MALLIKARJUNA VENKATA', cx + 42, cy + 196);
+            ctx.fillText('NARSIMHARAO', cx + 42, cy + 231);
+
+            ctx.fillText('RAMA RAO MALLIKARJUNA VENKATA', cx + 42, cy + 285);
+
+            // DOB
+            ctx.fillText('05/07/1971', cx + 46, cy + 373);
+
+            // Permanent Account Number Label
+            ctx.fillStyle = '#1b559e';
+            ctx.font = '600 21px Arial, sans-serif';
+            ctx.fillText('Permanent Account Number', cx + 48, cy + 412);
+
+            // PAN Alphanumeric Number
+            ctx.fillStyle = '#0c3b82';
+            ctx.font = '700 31px Arial, sans-serif';
+            ctx.fillText('BGBPM6122K', cx + 48, cy + 451);
+
+            // Hologram Patch on Upper Right
+            drawHologramPatch(ctx, cx + 695, cy + 160, 200, 190);
+
+            // Right Bottom ID Photo Box
+            drawPortraitPhoto(ctx, cx + 700, cy + 382, 206, 215);
+
+            // Vertical Side Date Stamp (25082010)
+            ctx.save();
+            ctx.translate(cx + 946, cy + 595);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#0d4794';
+            ctx.font = '700 20px Arial, sans-serif';
+            ctx.fillText('25082010', 0, 0);
+            ctx.restore();
+
+            // Card Signature on Bottom Left
+            drawCardSignaturePath(ctx, cx + 62, cy + 472, 1.0, '#1050b5');
+
+            // "Signature" Label on Card
+            ctx.fillStyle = '#336db8';
+            ctx.font = '600 22px Arial, sans-serif';
+            ctx.fillText('Signature', cx + 54, cy + 596);
+        }
+
+        function drawEmblemSilhouette(ctx, x, y, w, h) {
+            ctx.save();
+            ctx.fillStyle = '#1a75cf';
+            const midX = x + w / 2;
+            // Crown / Lions upper structure
+            ctx.beginPath();
+            ctx.ellipse(midX, y + 26, 24, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillRect(midX - 18, y + 24, 36, 42);
+            // Pedestal base
+            ctx.fillRect(midX - 26, y + 66, 52, 16);
+            ctx.fillRect(midX - 30, y + 84, 60, 8);
+            // Tiny motto line
+            ctx.font = '700 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('सत्यमेव जयते', midX, y + 105);
+            ctx.restore();
+        }
+
+        function drawHologramPatch(ctx, x, y, w, h) {
+            ctx.save();
+            // Rounded rectangle clip
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, 14);
+            ctx.clip();
+
+            ctx.fillStyle = '#d8f3fc';
+            ctx.fillRect(x, y, w, h);
+
+            // Diagonal security pattern
+            ctx.strokeStyle = '#4389c8';
+            ctx.lineWidth = 3;
+            for (let gx = -h; gx < w + h; gx += 22) {
+                ctx.beginPath();
+                ctx.moveTo(x + gx, y);
+                ctx.lineTo(x + gx + h, y + h);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x + gx + h, y);
+                ctx.lineTo(x + gx, y + h);
+                ctx.stroke();
+            }
+
+            // Inner circular seal
+            ctx.beginPath();
+            ctx.arc(x + w / 2, y + h / 2, 68, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillRect(x + w / 2 - 22, y + h / 2 - 32, 44, 58);
+            ctx.restore();
+        }
+
+        function drawPortraitPhoto(ctx, x, y, w, h) {
+            ctx.save();
+            // Photo backdrop
+            const pGrad = ctx.createLinearGradient(x, y, x, y + h);
+            pGrad.addColorStop(0, '#9c6e80');
+            pGrad.addColorStop(1, '#c88fa2');
+            ctx.fillStyle = pGrad;
+            ctx.fillRect(x, y, w, h);
+
+            const cx = x + w / 2;
+            // White collared shirt shoulders
+            ctx.fillStyle = '#eef8ff';
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y + h);
+            ctx.quadraticCurveTo(cx - 40, y + h - 52, cx, y + h - 46);
+            ctx.quadraticCurveTo(cx + 40, y + h - 52, x + w - 6, y + h);
+            ctx.closePath();
+            ctx.fill();
+
+            // Neck & Head
+            ctx.fillStyle = '#d4b5c2';
+            ctx.fillRect(cx - 26, y + h - 75, 52, 36);
+
+            // Face oval
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 96, 52, 66, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#e8d5de';
+            ctx.fill();
+
+            // Hair
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 54, 52, 34, 0, Math.PI, Math.PI * 2);
+            ctx.fillStyle = '#2d2b38';
+            ctx.fill();
+
+            // Forehead highlight
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 68, 42, 24, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // Glasses frame & lenses
+            ctx.strokeStyle = '#4a4556';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(cx - 42, y + 84, 36, 22);
+            ctx.strokeRect(cx + 6, y + 84, 36, 22);
+            ctx.beginPath();
+            ctx.moveTo(cx - 6, y + 93);
+            ctx.lineTo(cx + 6, y + 93);
+            ctx.stroke();
+
+            // Eyes
+            ctx.fillStyle = '#2d2534';
+            ctx.beginPath();
+            ctx.arc(cx - 24, y + 95, 4, 0, Math.PI * 2);
+            ctx.arc(cx + 24, y + 95, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mustache & subtle beard shadow
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 130, 26, 8, 0, Math.PI, Math.PI * 2);
+            ctx.fillStyle = '#483b4b';
+            ctx.fill();
+
+            ctx.strokeStyle = '#5a4d5e';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(cx, y + 112, 46, 0.25 * Math.PI, 0.75 * Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Helper to draw the signature curve matching the card
+        function drawCardSignaturePath(ctx, offsetX, offsetY, scale = 1, color = '#0f296b', lineWidth = 3.2) {
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Initial slash "/"
+            ctx.beginPath();
+            ctx.moveTo(6, 82);
+            ctx.lineTo(22, 42);
+            ctx.stroke();
+
+            // Dot
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(28, 66, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cursive "Narsimha..." sweep
+            ctx.beginPath();
+            ctx.moveTo(42, 86);
+            ctx.lineTo(49, 32);
+            ctx.lineTo(63, 86);
+            ctx.lineTo(79, 18);
+            ctx.moveTo(76, 86);
+            ctx.quadraticCurveTo(84, 52, 92, 62);
+            ctx.quadraticCurveTo(96, 76, 84, 84);
+            ctx.quadraticCurveTo(92, 88, 128, 89);
+            ctx.quadraticCurveTo(188, 90, 232, 42);
+            ctx.quadraticCurveTo(256, 18, 265, 8);
+            ctx.quadraticCurveTo(257, 46, 262, 68);
+            ctx.quadraticCurveTo(266, 73, 304, 72);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        /********************************************************************
+         * 2. REAL-TIME XEROX / PHOTOCOPY IMAGE PROCESSING ENGINE
+         ********************************************************************/
+        function processXeroxDocument() {
+            // 1. Determine active source bitmap (user uploaded image OR pre-loaded replica)
+            let srcElement = sourceDocCanvas;
+            let srcW = sourceDocCanvas.width;
+            let srcH = sourceDocCanvas.height;
+
+            if (uploadedDocImage) {
+                srcElement = uploadedDocImage;
+                srcW = uploadedDocImage.naturalWidth || uploadedDocImage.width;
+                srcH = uploadedDocImage.naturalHeight || uploadedDocImage.height;
+            }
+
+            // Offscreen buffer to inspect pixels & optionally trim dark screenshot borders
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = srcW;
+            tempCanvas.height = srcH;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(srcElement, 0, 0, srcW, srcH);
+
+            let cropX = 0, cropY = 0, cropW = srcW, cropH = srcH;
+
+            if (state.trimDarkEdges) {
+                const bounds = detectDarkBorderBounds(tempCtx, srcW, srcH);
+                cropX = bounds.x;
+                cropY = bounds.y;
+                cropW = bounds.w;
+                cropH = bounds.h;
+            }
+
+            // Handle 90-degree rotations
+            const isRotated90 = (state.rotation === 90 || state.rotation === 270);
+            const outW = isRotated90 ? cropH : cropW;
+            const outH = isRotated90 ? cropW : cropH;
+
+            xeroxOutputCanvas.width = outW;
+            xeroxOutputCanvas.height = outH;
+
+            xeroxCtx.save();
+            xeroxCtx.translate(outW / 2, outH / 2);
+            xeroxCtx.rotate((state.rotation * Math.PI) / 180);
+            xeroxCtx.drawImage(
+                tempCanvas,
+                cropX, cropY, cropW, cropH,
+                -cropW / 2, -cropH / 2, cropW, cropH
+            );
+            xeroxCtx.restore();
+
+            // Fetch pixel data for authentic Xerox toner manipulation
+            const imgData = xeroxCtx.getImageData(0, 0, outW, outH);
+            const data = imgData.data;
+
+            const whiteningFactor = state.whitening / 100; // Suppresses light cyan/blue card tint
+            const contrastVal = (state.contrast / 100);
+            const brightnessVal = (state.brightness / 100);
+            const grayMix = state.grayscale / 100;
+            const grainAmount = state.grain * 0.85;
+
+            // Deterministic pseudo-random seed for stable photocopy grain
+            let seed = 1337;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                // Step A: Cyan/Blue Background Whitening (Crucial for PAN cards & blue ID cards)
+                // Dark blue text has low R and moderate G/B; light cyan background has high G and high B, and moderate-high R.
+                // Lifting luminance based on high G & B cleans the background into pure paper white while keeping dark ink dark.
+                const cyanLuminance = (r * 0.22 + g * 0.43 + b * 0.35);
+                let luma = (r * 0.299 + g * 0.587 + b * 0.114);
+
+                // Boost mid-high cyan values toward white
+                if (cyanLuminance > 115) {
+                    const boost = ((cyanLuminance - 115) / 140) * 110 * whiteningFactor;
+                    luma = Math.min(255, luma + boost);
+                    r = Math.min(255, r + boost);
+                    g = Math.min(255, g + boost);
+                    b = Math.min(255, b + boost);
+                }
+
+                // Step B: Brightness & High-Contrast S-Curve (Photocopy Toner Curve)
+                let procR = ((r * brightnessVal - 128) * contrastVal) + 128;
+                let procG = ((g * brightnessVal - 128) * contrastVal) + 128;
+                let procB = ((b * brightnessVal - 128) * contrastVal) + 128;
+                let procLuma = ((luma * brightnessVal - 128) * contrastVal) + 128;
+
+                // Soft threshold knee at the top so paper background is crisp white (like real laser Xerox)
+                if (procLuma > 228) {
+                    procLuma = 228 + (procLuma - 228) * 1.8;
+                }
+                // Deepen dark toner text
+                if (procLuma < 95) {
+                    procLuma = procLuma * 0.78;
+                }
+
+                // Step C: Subtle Laser Toner Grain
+                if (grainAmount > 0 && procLuma < 242) {
+                    seed = (seed * 16807) % 2147483647;
+                    const noise = ((seed / 2147483647) - 0.5) * grainAmount;
+                    procLuma += noise;
+                    procR += noise;
+                    procG += noise;
+                    procB += noise;
+                }
+
+                // Blend between color and grayscale
+                const finalR = Math.max(0, Math.min(255, procR * (1 - grayMix) + procLuma * grayMix));
+                const finalG = Math.max(0, Math.min(255, procG * (1 - grayMix) + procLuma * grayMix));
+                const finalB = Math.max(0, Math.min(255, procB * (1 - grayMix) + procLuma * grayMix));
+
+                data[i] = finalR;
+                data[i + 1] = finalG;
+                data[i + 2] = finalB;
+            }
+
+            xeroxCtx.putImageData(imgData, 0, 0);
+
+            // Optional realistic photocopy edge border
+            if (state.showCardBorder) {
+                xeroxCtx.save();
+                xeroxCtx.strokeStyle = '#52525b';
+                xeroxCtx.lineWidth = Math.max(2, Math.round(outW * 0.0025));
+                xeroxCtx.strokeRect(1, 1, outW - 2, outH - 2);
+                xeroxCtx.restore();
+            }
+        }
+
+        // Automatically detects and trims solid black screenshot borders around the card
+        function detectDarkBorderBounds(ctx, w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h).data;
+            const isBrightPixel = (x, y) => {
+                const idx = (y * w + x) * 4;
+                return (imgData[idx] + imgData[idx + 1] + imgData[idx + 2]) > 120;
+            };
+
+            let top = 0, bottom = h - 1, left = 0, right = w - 1;
+            const maxScanX = Math.floor(w * 0.12);
+            const maxScanY = Math.floor(h * 0.12);
+
+            // Scan top
+            for (let y = 0; y < maxScanY; y++) {
+                let brightCount = 0;
+                for (let x = 0; x < w; x += 8) {
+                    if (isBrightPixel(x, y)) brightCount++;
+                }
+                if (brightCount > (w / 8) * 0.4) { top = y; break; }
+            }
+            // Scan bottom
+            for (let y = h - 1; y > h - maxScanY; y--) {
+                let brightCount = 0;
+                for (let x = 0; x < w; x += 8) {
+                    if (isBrightPixel(x, y)) brightCount++;
+                }
+                if (brightCount > (w / 8) * 0.4) { bottom = y; break; }
+            }
+            // Scan left
+            for (let x = 0; x < maxScanX; x++) {
+                let brightCount = 0;
+                for (let y = 0; y < h; y += 8) {
+                    if (isBrightPixel(x, y)) brightCount++;
+                }
+                if (brightCount > (h / 8) * 0.4) { left = x; break; }
+            }
+            // Scan right
+            for (let x = w - 1; x > w - maxScanX; x--) {
+                let brightCount = 0;
+                for (let y = 0; y < h; y += 8) {
+                    if (isBrightPixel(x, y)) brightCount++;
+                }
+                if (brightCount > (h / 8) * 0.4) { right = x; break; }
+            }
+
+            return {
+                x: left,
+                y: top,
+                w: Math.max(50, right - left + 1),
+                h: Math.max(50, bottom - top + 1)
+            };
+        }
+
+        /********************************************************************
+         * 3. SIGNATURE PAD & SIGNATURE RENDERING ENGINE (BELOW XEROX)
+         ********************************************************************/
+        function initDefaultSignatureOnPad() {
+            sigStrokes = [];
+            sigPadCtx.clearRect(0, 0, sigPadCanvas.width, sigPadCanvas.height);
+            // Draw the default signature from the card onto the signature pad
+            drawCardSignaturePath(sigPadCtx, 28, 12, 0.95, state.inkColor, state.penWidth);
+            syncSignatureToA4Preview();
+        }
+
+        function redrawSigPadFromStrokes() {
+            sigPadCtx.clearRect(0, 0, sigPadCanvas.width, sigPadCanvas.height);
+
+            if (sigStrokes.length === 0 && !isUsingDefaultCardSig) {
+                syncSignatureToA4Preview();
+                return;
+            }
+
+            if (isUsingDefaultCardSig && sigStrokes.length === 0) {
+                drawCardSignaturePath(sigPadCtx, 28, 12, 0.95, state.inkColor, state.penWidth);
+            }
+
+            sigPadCtx.save();
+            sigPadCtx.strokeStyle = state.inkColor;
+            sigPadCtx.lineWidth = state.penWidth;
+            sigPadCtx.lineCap = 'round';
+            sigPadCtx.lineJoin = 'round';
+
+            for (const stroke of sigStrokes) {
+                if (stroke.length < 2) continue;
+                sigPadCtx.beginPath();
+                sigPadCtx.moveTo(stroke[0].x, stroke[0].y);
+                for (let i = 1; i < stroke.length - 1; i++) {
+                    const midX = (stroke[i].x + stroke[i + 1].x) / 2;
+                    const midY = (stroke[i].y + stroke[i + 1].y) / 2;
+                    sigPadCtx.quadraticCurveTo(stroke[i].x, stroke[i].y, midX, midY);
+                }
+                const last = stroke[stroke.length - 1];
+                sigPadCtx.lineTo(last.x, last.y);
+                sigPadCtx.stroke();
+            }
+            sigPadCtx.restore();
+
+            syncSignatureToA4Preview();
+        }
+
+        let isUsingDefaultCardSig = true;
+
+        function syncSignatureToA4Preview() {
+            const sigBlock = document.getElementById('signatureBlock');
+            sigBlock.style.display = state.showSignature ? 'flex' : 'none';
+            if (!state.showSignature) return;
+
+            previewSigCtx.clearRect(0, 0, previewSigCanvas.width, previewSigCanvas.height);
+
+            if (state.sigMode === 'draw') {
+                previewSigCtx.drawImage(
+                    sigPadCanvas,
+                    0, 0, sigPadCanvas.width, sigPadCanvas.height,
+                    0, 0, previewSigCanvas.width, previewSigCanvas.height
+                );
+            } else if (state.sigMode === 'upload' && uploadedSigImage) {
+                // Process uploaded signature with automatic white-background removal
+                const temp = document.createElement('canvas');
+                temp.width = previewSigCanvas.width;
+                temp.height = previewSigCanvas.height;
+                const tCtx = temp.getContext('2d');
+
+                // Fit image proportionally inside previewSigCanvas
+                const scale = Math.min(
+                    temp.width / uploadedSigImage.width,
+                    temp.height / uploadedSigImage.height
+                ) * 0.9;
+                const dw = uploadedSigImage.width * scale;
+                const dh = uploadedSigImage.height * scale;
+                const dx = (temp.width - dw) / 2;
+                const dy = (temp.height - dh) / 2;
+
+                tCtx.drawImage(uploadedSigImage, dx, dy, dw, dh);
+                const imgData = tCtx.getImageData(0, 0, temp.width, temp.height);
+                const d = imgData.data;
+
+                // Parse selected ink RGB
+                const inkRGB = hexToRgb(state.inkColor);
+                const thresh = state.sigThreshold;
+
+                for (let i = 0; i < d.length; i += 4) {
+                    const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+                    if (a < 10) continue;
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    if (lum > thresh) {
+                        // Make background transparent
+                        d[i + 3] = 0;
+                    } else {
+                        // Tint ink smoothly
+                        const alphaStrength = Math.min(255, ((thresh - lum) / (thresh * 0.6)) * 255);
+                        d[i] = inkRGB.r;
+                        d[i + 1] = inkRGB.g;
+                        d[i + 2] = inkRGB.b;
+                        d[i + 3] = alphaStrength;
+                    }
+                }
+                previewSigCtx.putImageData(imgData, 0, 0);
+            }
+
+            // Update Attestation Header, Caption, Date, and Positioning
+            const headerEl = document.getElementById('previewAttestHeader');
+            if (state.attestHeader) {
+                headerEl.textContent = state.attestHeader;
+                headerEl.style.color = state.inkColor;
+                headerEl.classList.remove('hidden');
+            } else {
+                headerEl.classList.add('hidden');
+            }
+
+            const captionEl = document.getElementById('previewSigCaption');
+            if (state.sigCaption) {
+                captionEl.textContent = state.sigCaption;
+                captionEl.classList.remove('hidden');
+            } else {
+                captionEl.classList.add('hidden');
+            }
+
+            const dateEl = document.getElementById('previewSigDate');
+            if (state.showDate && state.sigDateText.trim()) {
+                dateEl.textContent = 'Date: ' + state.sigDateText.trim();
+                dateEl.style.color = state.inkColor;
+                dateEl.classList.remove('hidden');
+            } else {
+                dateEl.classList.add('hidden');
+            }
+
+            // Apply scale and vertical/horizontal offsets
+            const scaleVal = state.sigScale / 100;
+            sigBlock.style.marginTop = `${state.sigGapPx}px`;
+            sigBlock.style.transform = `translateX(${state.sigOffsetX}px) scale(${scaleVal})`;
+        }
+
+        function hexToRgb(hex) {
+            const clean = hex.replace('#', '');
+            const num = parseInt(clean, 16);
+            return {
+                r: (num >> 16) & 255,
+                g: (num >> 8) & 255,
+                b: num & 255
+            };
+        }
+
+        // Signature Pad Pointer Events
+        function getPadCoords(e) {
+            const rect = sigPadCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (sigPadCanvas.width / rect.width),
+                y: (clientY - rect.top) * (sigPadCanvas.height / rect.height)
+            };
+        }
+
+        sigPadCanvas.addEventListener('mousedown', (e) => {
+            if (isUsingDefaultCardSig) {
+                isUsingDefaultCardSig = false;
+                sigStrokes = [];
+            }
+            isDrawingSig = true;
+            currentStroke = [getPadCoords(e)];
+            sigStrokes.push(currentStroke);
+            redrawSigPadFromStrokes();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDrawingSig) return;
+            currentStroke.push(getPadCoords(e));
+            redrawSigPadFromStrokes();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawingSig = false;
+        });
+
+        sigPadCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (isUsingDefaultCardSig) {
+                isUsingDefaultCardSig = false;
+                sigStrokes = [];
+            }
+            isDrawingSig = true;
+            currentStroke = [getPadCoords(e)];
+            sigStrokes.push(currentStroke);
+            redrawSigPadFromStrokes();
+        }, { passive: false });
+
+        sigPadCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!isDrawingSig) return;
+            currentStroke.push(getPadCoords(e));
+            redrawSigPadFromStrokes();
+        }, { passive: false });
+
+        sigPadCanvas.addEventListener('touchend', () => {
+            isDrawingSig = false;
+        });
+
+        /********************************************************************
+         * 4. DRAGGABLE SIGNATURE BLOCK ON THE A4 PREVIEW
+         ********************************************************************/
+        const sigBlockEl = document.getElementById('signatureBlock');
+        let isDraggingSigBlock = false;
+        let dragStartX = 0, dragStartY = 0;
+        let initialOffsetX = 0, initialGapY = 0;
+
+        sigBlockEl.addEventListener('mousedown', (e) => {
+            isDraggingSigBlock = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            initialOffsetX = state.sigOffsetX;
+            initialGapY = state.sigGapPx;
+            sigBlockEl.classList.add('active-drag');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDraggingSigBlock) return;
+            const dx = (e.clientX - dragStartX) / state.previewZoom;
+            const dy = (e.clientY - dragStartY) / state.previewZoom;
+            state.sigOffsetX = Math.round(initialOffsetX + dx);
+            state.sigGapPx = Math.max(-45, Math.min(140, Math.round(initialGapY + dy)));
+
+            document.getElementById('slider-sig-gap').value = state.sigGapPx;
+            document.getElementById('val-sig-gap').textContent = `${state.sigGapPx} px`;
+            syncSignatureToA4Preview();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDraggingSigBlock) {
+                isDraggingSigBlock = false;
+                sigBlockEl.classList.remove('active-drag');
+            }
+        });
+
+        /********************************************************************
+         * 5. FILE UPLOAD, DRAG-AND-DROP & CLIPBOARD PASTE HANDLERS
+         ********************************************************************/
+        function handleDocumentFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast('Please select a valid image file.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedDocImage = img;
+                    document.getElementById('sourceBadge').textContent = 'Custom Image Loaded';
+                    document.getElementById('sourceBadge').className = 'text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                    processXeroxDocument();
+                    showToast('Document image updated with Xerox filter!');
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('docUploadInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleDocumentFile(e.target.files[0]);
+            }
+        });
+
+        const dropZoneBanner = document.getElementById('dropZoneBanner');
+        dropZoneBanner.addEventListener('click', () => {
+            document.getElementById('docUploadInput').click();
+        });
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleDocumentFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Clipboard Paste (Ctrl+V)
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.type.indexOf('image') === 0) {
+                    const blob = item.getAsFile();
+                    handleDocumentFile(blob);
+                    break;
+                }
+            }
+        });
+
+        // Upload Signature Image
+        document.getElementById('sigUploadInput').addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedSigImage = img;
+                    state.sigMode = 'upload';
+                    syncSignatureToA4Preview();
+                    showToast('Signature uploaded & background cleaned!');
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        /********************************************************************
+         * 6. UI CONTROLS, TABS, PRESETS & EXPORT
+         ********************************************************************/
+        // Tab Switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.className = 'tab-btn py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+                });
+                btn.className = 'tab-btn active-tab py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 text-sky-400 shadow transition flex items-center justify-center gap-1.5';
+
+                const targetId = btn.getAttribute('data-tab');
+                document.querySelectorAll('.tab-panel').forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                document.getElementById(targetId).classList.remove('hidden');
+            });
+        });
+
+        // Xerox Sliders
+        function bindSlider(sliderId, valId, stateKey, suffix, callback) {
+            const slider = document.getElementById(sliderId);
+            const valEl = document.getElementById(valId);
+            slider.addEventListener('input', () => {
+                state[stateKey] = parseFloat(slider.value);
+                valEl.textContent = `${state[stateKey]}${suffix}`;
+                callback();
+            });
+        }
+
+        bindSlider('slider-whitening', 'val-whitening', 'whitening', '%', processXeroxDocument);
+        bindSlider('slider-contrast', 'val-contrast', 'contrast', '%', processXeroxDocument);
+        bindSlider('slider-brightness', 'val-brightness', 'brightness', '%', processXeroxDocument);
+        bindSlider('slider-grayscale', 'val-grayscale', 'grayscale', '%', processXeroxDocument);
+        bindSlider('slider-grain', 'val-grain', 'grain', '%', processXeroxDocument);
+
+        document.getElementById('toggle-trim').addEventListener('change', (e) => {
+            state.trimDarkEdges = e.target.checked;
+            processXeroxDocument();
+        });
+
+        document.getElementById('toggle-card-border').addEventListener('change', (e) => {
+            state.showCardBorder = e.target.checked;
+            processXeroxDocument();
+        });
+
+        // Xerox Presets
+        const xeroxPresets = {
+            classic: { whitening: 78, contrast: 165, brightness: 112, grayscale: 100, grain: 18 },
+            crisp:   { whitening: 92, contrast: 225, brightness: 118, grayscale: 100, grain: 12 },
+            soft:    { whitening: 55, contrast: 135, brightness: 108, grayscale: 100, grain: 10 },
+            dark:    { whitening: 60, contrast: 190, brightness: 96,  grayscale: 100, grain: 28 }
+        };
+
+        function applyXeroxPreset(presetName) {
+            const p = xeroxPresets[presetName];
+            if (!p) return;
+            Object.assign(state, p);
+
+            document.getElementById('slider-whitening').value = p.whitening;
+            document.getElementById('val-whitening').textContent = `${p.whitening}%`;
+            document.getElementById('slider-contrast').value = p.contrast;
+            document.getElementById('val-contrast').textContent = `${p.contrast}%`;
+            document.getElementById('slider-brightness').value = p.brightness;
+            document.getElementById('val-brightness').textContent = `${p.brightness}%`;
+            document.getElementById('slider-grayscale').value = p.grayscale;
+            document.getElementById('val-grayscale').textContent = `${p.grayscale}%`;
+            document.getElementById('slider-grain').value = p.grain;
+            document.getElementById('val-grain').textContent = `${p.grain}%`;
+
+            processXeroxDocument();
+        }
+
+        document.querySelectorAll('.xerox-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.xerox-preset-btn').forEach(b => {
+                    b.className = 'xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-left flex items-center justify-between';
+                    const icon = b.querySelector('i');
+                    if (icon) icon.remove();
+                });
+                btn.className = 'xerox-preset-btn px-3 py-2 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300 text-left flex items-center justify-between';
+                btn.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-check text-[10px]"></i>');
+                applyXeroxPreset(btn.getAttribute('data-preset'));
+            });
+        });
+
+        document.getElementById('resetXeroxBtn').addEventListener('click', () => {
+            applyXeroxPreset('classic');
+            showToast('Xerox filter reset to standard laser copy.');
+        });
+
+        // Signature Controls
+        document.getElementById('toggle-show-sig').addEventListener('change', (e) => {
+            state.showSignature = e.target.checked;
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('sigModeDrawBtn').addEventListener('click', () => {
+            state.sigMode = 'draw';
+            document.getElementById('sigDrawPanel').classList.remove('hidden');
+            document.getElementById('sigUploadPanel').classList.add('hidden');
+            document.getElementById('sigModeDrawBtn').className = 'py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-800 text-sky-400 transition';
+            document.getElementById('sigModeUploadBtn').className = 'py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('sigModeUploadBtn').addEventListener('click', () => {
+            state.sigMode = 'upload';
+            document.getElementById('sigDrawPanel').classList.add('hidden');
+            document.getElementById('sigUploadPanel').classList.remove('hidden');
+            document.getElementById('sigUploadPanel').classList.add('flex');
+            document.getElementById('sigModeUploadBtn').className = 'py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-800 text-sky-400 transition';
+            document.getElementById('sigModeDrawBtn').className = 'py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('clearSigPadBtn').addEventListener('click', () => {
+            isUsingDefaultCardSig = false;
+            sigStrokes = [];
+            redrawSigPadFromStrokes();
+        });
+
+        document.getElementById('restoreDefaultSigBtn').addEventListener('click', () => {
+            isUsingDefaultCardSig = true;
+            sigStrokes = [];
+            redrawSigPadFromStrokes();
+            showToast('Restored signature from card.');
+        });
+
+        document.querySelectorAll('.ink-color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ink-color-btn').forEach(b => {
+                    b.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-slate-900', 'ring-sky-400');
+                });
+                btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-900', 'ring-sky-400');
+                state.inkColor = btn.getAttribute('data-ink');
+                redrawSigPadFromStrokes();
+            });
+        });
+
+        bindSlider('slider-pen-width', 'val-pen-width', 'penWidth', 'px', redrawSigPadFromStrokes);
+        bindSlider('slider-sig-thresh', 'val-sig-thresh', 'sigThreshold', '', syncSignatureToA4Preview);
+        bindSlider('slider-sig-scale', 'val-sig-scale', 'sigScale', '%', syncSignatureToA4Preview);
+        bindSlider('slider-sig-gap', 'val-sig-gap', 'sigGapPx', ' px', syncSignatureToA4Preview);
+
+        document.getElementById('select-attest-header').addEventListener('change', (e) => {
+            state.attestHeader = e.target.value;
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('select-sig-caption').addEventListener('change', (e) => {
+            state.sigCaption = e.target.value;
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('toggle-sig-date').addEventListener('change', (e) => {
+            state.showDate = e.target.checked;
+            syncSignatureToA4Preview();
+        });
+
+        document.getElementById('input-sig-date').addEventListener('input', (e) => {
+            state.sigDateText = e.target.value;
+            syncSignatureToA4Preview();
+        });
+
+        // Page Layout & Sizing Controls
+        function updatePageLayout() {
+            const xeroxWrapper = document.getElementById('xeroxWrapper');
+            const a4Sheet = document.getElementById('a4Sheet');
+            xeroxWrapper.style.width = `${state.docWidthCm}cm`;
+            a4Sheet.style.paddingTop = `${state.topMarginCm}cm`;
+            a4Sheet.style.alignItems = state.horizontalAlign;
+        }
+
+        bindSlider('slider-doc-width', 'val-doc-width', 'docWidthCm', ' cm', updatePageLayout);
+        bindSlider('slider-top-margin', 'val-top-margin', 'topMarginCm', ' cm', updatePageLayout);
+
+        document.querySelectorAll('.size-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.size-preset-btn').forEach(b => {
+                    b.className = 'size-preset-btn px-2.5 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/70 text-slate-300 hover:border-slate-600 text-center';
+                });
+                btn.className = 'size-preset-btn px-2.5 py-2 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300 text-center';
+                const cm = parseFloat(btn.getAttribute('data-size'));
+                state.docWidthCm = cm;
+                document.getElementById('slider-doc-width').value = cm;
+                document.getElementById('val-doc-width').textContent = `${cm.toFixed(1)} cm`;
+                updatePageLayout();
+            });
+        });
+
+        document.querySelectorAll('.align-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.align-btn').forEach(b => {
+                    b.className = 'align-btn px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300';
+                });
+                btn.className = 'align-btn px-3 py-1.5 rounded-lg text-xs font-medium border border-sky-500 bg-sky-500/15 text-sky-300';
+                state.horizontalAlign = btn.getAttribute('data-align');
+                updatePageLayout();
+            });
+        });
+
+        document.getElementById('rotateDocBtn').addEventListener('click', () => {
+            state.rotation = (state.rotation + 90) % 360;
+            processXeroxDocument();
+        });
+
+        // Preview Zoom
+        function updateZoom() {
+            const sheet = document.getElementById('a4Sheet');
+            sheet.style.transform = `scale(${state.previewZoom})`;
+            document.getElementById('zoomLevelText').textContent = `${Math.round(state.previewZoom * 100)}%`;
+        }
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            state.previewZoom = Math.max(0.5, state.previewZoom - 0.1);
+            updateZoom();
+        });
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            state.previewZoom = Math.min(1.3, state.previewZoom + 0.1);
+            updateZoom();
+        });
+
+        // Print Document Action
+        document.getElementById('printDocBtn').addEventListener('click', () => {
+            window.print();
+        });
+
+        // High-Resolution Printable A4 Sheet Image Download
+        document.getElementById('downloadSheetBtn').addEventListener('click', () => {
+            const exportCanvas = document.createElement('canvas');
+            // 2480 x 3508 pixels (300 DPI A4)
+            const a4W = 1654;
+            const a4H = 2339;
+            exportCanvas.width = a4W;
+            exportCanvas.height = a4H;
+            const eCtx = exportCanvas.getContext('2d');
+
+            // Pure White A4 Paper Background
+            eCtx.fillStyle = '#ffffff';
+            eCtx.fillRect(0, 0, a4W, a4H);
+
+            // Convert cm to pixels on A4 (21.0 cm = a4W)
+            const pxPerCm = a4W / 21.0;
+            const docW = state.docWidthCm * pxPerCm;
+            const docAspect = xeroxOutputCanvas.height / xeroxOutputCanvas.width;
+            const docH = docW * docAspect;
+            const topY = state.topMarginCm * pxPerCm;
+            const sidePad = 1.8 * pxPerCm;
+
+            let docX = (a4W - docW) / 2;
+            if (state.horizontalAlign === 'flex-start') docX = sidePad;
+            if (state.horizontalAlign === 'flex-end') docX = a4W - sidePad - docW;
+
+            // 1. Draw Xeroxed Document
+            eCtx.drawImage(xeroxOutputCanvas, docX, topY, docW, docH);
+
+            // 2. Draw Signature Block Below Document
+            if (state.showSignature) {
+                const scaleFactor = (a4W / 794) * (state.sigScale / 100);
+                const sigCenterX = docX + docW / 2 + state.sigOffsetX * (a4W / 794);
+                let curY = topY + docH + state.sigGapPx * (a4W / 794);
+
+                eCtx.save();
+                eCtx.textAlign = 'center';
+
+                if (state.attestHeader) {
+                    eCtx.fillStyle = state.inkColor;
+                    eCtx.font = `600 ${Math.round(13 * scaleFactor)}px Inter, sans-serif`;
+                    curY += 16 * scaleFactor;
+                    eCtx.fillText(state.attestHeader, sigCenterX, curY);
+                    curY += 4 * scaleFactor;
+                }
+
+                const sigW = 190 * scaleFactor;
+                const sigH = 60 * scaleFactor;
+                eCtx.drawImage(previewSigCanvas, sigCenterX - sigW / 2, curY, sigW, sigH);
+                curY += sigH + 4 * scaleFactor;
+
+                if (state.sigCaption) {
+                    eCtx.fillStyle = '#1e293b';
+                    eCtx.font = `500 ${Math.round(12 * scaleFactor)}px Inter, sans-serif`;
+                    eCtx.fillText(state.sigCaption, sigCenterX, curY);
+                    curY += 15 * scaleFactor;
+                }
+
+                if (state.showDate && state.sigDateText.trim()) {
+                    eCtx.fillStyle = state.inkColor;
+                    eCtx.font = `500 ${Math.round(11 * scaleFactor)}px monospace`;
+                    eCtx.fillText('Date: ' + state.sigDateText.trim(), sigCenterX, curY);
+                }
+
+                eCtx.restore();
+            }
+
+            const link = document.createElement('a');
+            link.download = 'Printable-Xerox-Document-A4.png';
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+            showToast('Downloaded high-resolution A4 printable sheet!');
+        });
+
+        // Toast Helper
+        let toastTimer = null;
+        function showToast(msg) {
+            const toast = document.getElementById('toastMsg');
+            document.getElementById('toastText').textContent = msg;
+            toast.classList.remove('translate-y-12', 'opacity-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('translate-y-12', 'opacity-0');
+            }, 3200);
+        }
+
+        // Responsive zoom adjustment on smaller screens
+        function autoFitPreviewOnMobile() {
+            if (window.innerWidth < 860) {
+                state.previewZoom = Math.max(0.45, (window.innerWidth - 48) / 800);
+                updateZoom();
+            }
+        }
+
+        // Initialize Studio on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderDefaultPanCardReplica();
+            processXeroxDocument();
+            initDefaultSignatureOnPad();
+            autoFitPreviewOnMobile();
+        });
+    </script>
+</body>
+</html>
